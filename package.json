@@ -1,0 +1,24 @@
+{
+  "name": "html5-bombergirl",
+  "version": "1.0.0",
+  "description": "HTML5 Bombergirl\r ================",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MattSkala/html5-bombergirl.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MattSkala/html5-bombergirl/issues"
+  },
+  "homepage": "https://github.com/MattSkala/html5-bombergirl#readme",
+  "dependencies": {
+    "express": "^4.16.3",
+    "nodemon": "^1.17.5"
+  }
+}
