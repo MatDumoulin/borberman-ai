@@ -5,7 +5,7 @@ This repository adds Nodejs/Express support to the [HTML5 Bombergirl](https://gi
 Installation
 ------------
 1. Clone this repository: ```git clone https://github.com/kingbaub3/borberman-ai.git```
-2. ```cd html5-bombergirl```
+2. ```cd bomberman-ai```
 3. Download dependencies via [Bower](https://github.com/twitter/bower): ```bower install```
 4. Download dependencies via NPM: ```npm install```
 5. Run server: ```npm start```
