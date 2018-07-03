@@ -25,10 +25,13 @@ GameEngine = Class.extend({
     bonusesImg: null,
 
     playing: false,
+    paused: false,
     mute: false,
     soundtrackLoaded: false,
     soundtrackPlaying: false,
     soundtrack: null,
+    // Socket communication
+    socket: null,
 
     init: function() {
         this.size = {
@@ -74,8 +77,16 @@ GameEngine = Class.extend({
         createjs.Sound.registerSound("sound/bomb.ogg", "bomb");
         createjs.Sound.registerSound("sound/game.ogg", "game");
 
-        // Create menu
+
+        // Creates menu
         this.menu = new Menu();
+
+        this.socket = io('http://localhost:3000');
+        // Wait for the communication with the server before showing the menu.
+        console.log("Waiting for web socket...");
+        this.socket.on('connect', function(){
+            console.log("Socket is connected.");
+        });
     },
 
     setup: function() {
@@ -117,6 +128,14 @@ GameEngine = Class.extend({
             }
         });
 
+        // Pause listener
+        gInputEngine.addListener('pause', () => {
+            if (!gGameEngine.menu.visible) {
+                this.paused = !this.paused;
+                this.socket.emit("pause");
+            }
+        });
+
         // Start loop
         if (!createjs.Ticker.hasEventListener('tick')) {
             createjs.Ticker.addEventListener('tick', gGameEngine.update);
@@ -152,6 +171,11 @@ GameEngine = Class.extend({
     },
 
     update: function() {
+        // Skip the update if paused.
+        if(this.paused) {
+            return;
+        }
+
         // Player
         for (var i = 0; i < gGameEngine.players.length; i++) {
             var player = gGameEngine.players[i];
@@ -253,7 +277,7 @@ GameEngine = Class.extend({
         this.bots = [];
 
         if (this.botsCount >= 1) {
-            var bot2 = new Bot({ x: 1, y: this.tilesY - 2 });
+            var bot2 = new AdvancedBot({ x: 1, y: this.tilesY - 2 });
             this.bots.push(bot2);
         }
 
@@ -346,6 +370,7 @@ GameEngine = Class.extend({
     },
 
     restart: function() {
+        this.socket.emit("restart");
         gInputEngine.removeAllListeners();
         gGameEngine.stage.removeAllChildren();
         gGameEngine.setup();
@@ -391,6 +416,17 @@ GameEngine = Class.extend({
         }
 
         return players;
+    },
+
+    getSerializedState: function() {
+        return {
+            players: this.getPlayersAndBots(),
+            bonuses: this.bonuses,
+            tiles: this.tiles,
+            tilesX: this.tilesX,
+            tilesY: this.tilesY,
+            paused: this.paused
+        };
     }
 });
 
