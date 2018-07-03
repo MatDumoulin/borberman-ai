@@ -1,15 +1,18 @@
 class Tile {
-    /**
-     * Entity position on map grid
-     */
-    position = {};
 
-    size = {
-        w: 32,
-        h: 32
-    };
+    constructor() {
+        /**
+         * Entity position on map grid
+         */
+        this.position = {};
 
-    material = '';
+        this.size = {
+            w: 32,
+            h: 32
+        };
+
+        this.material = '';
+    }
 
     init(material, position) {
         this.material = material;

@@ -1,109 +1,98 @@
-const gameEngine = require('./GameEngine');
+const ActionBuffer = require('./ActionBuffer');
+const Entity = require('./Entity');
+const Utils = require('./Utils');
 
 class Player extends Entity {
-    id = 0;
 
-    /**
-     * Moving speed
-     */
-    velocity = 2;
+    constructor(id, gameEngine) {
+        super();
 
-    /**
-     * Max number of bombs user can spawn
-     */
-    bombsMax = 1;
+        this.id = id;
 
-    /**
-     * How far the fire reaches when bomb explodes
-     */
-    bombStrength = 1;
+        /**
+         * Moving speed
+         */
+        this.velocity = 2;
 
-    /**
-     * Entity position on map grid
-     */
-    position = {};
+        /**
+         * Max number of bombs user can spawn
+         */
+        this.bombsMax = 1;
 
-    /**
-     * Entity position on map grid
-     */
-    pixelPosition = {};
+        /**
+         * How far the fire reaches when bomb explodes
+         */
+       this.bombStrength = 1;
 
-    /**
-     * Bitmap dimensions
-     */
-    size = {
-        w: 48,
-        h: 48
-    };
+        /**
+         * Entity position on map grid
+         */
+        this.position = {};
 
-    alive = true;
+        /**
+         * Entity position on map grid
+         */
+        this.pixelPosition = {};
 
-    bombs = [];
+        /**
+         * Bitmap dimensions
+         */
+        this.size = {
+            w: 48,
+            h: 48
+        };
 
-    controls = {
-        'up': 'up',
-        'left': 'left',
-        'down': 'down',
-        'right': 'right',
-        'bomb': 'bomb'
-    };
+        this.alive = true;
 
-    /**
-     * Bomb that player can escape from even when there is a collision
-     */
-    escapeBomb = null;
+        this.bombs = [];
 
-    deadTimer = 0;
+        this.actionBuffer = new ActionBuffer();
 
-    init(position, controls, id) {
-        if (id) {
-            this.id = id;
-        }
+        /**
+         * Bomb that player can escape from even when there is a collision
+         */
+        this.escapeBomb = null;
 
-        if (controls) {
-            this.controls = controls;
-        }
+        this.gameEngine = gameEngine;
+    }
 
+    init(position) {
         this.position = position;
-        const pixels = Utils.convertToBitmapPosition(position, gameEngine.tileSize);
+        const pixels = Utils.convertToBitmapPosition(position, this.gameEngine.tileSize);
         this.pixelPosition = {
             x: pixels.x,
             y: pixels.y
         };
-
-        this.bombs = [];
-        this.setBombsListener();
     }
 
-    setBombsListener() {
+    plantBomb() {
         // Subscribe to bombs spawning
         if (!(this instanceof Bot)) {
-            gInputEngine.addListener(this.controls.bomb, () => {
-                // Check whether there is already bomb on this position
-                for (let i = 0; i < gameEngine.bombs.length; i++) {
-                    const bomb = gameEngine.bombs[i];
-                    if (Utils.comparePositions(bomb.position, this.position)) {
-                        return;
-                    }
+            // Check whether there is already bomb on this position
+            for (let i = 0; i < this.gameEngine.bombs.length; i++) {
+                const bomb = this.gameEngine.bombs[i];
+                if (Utils.comparePositions(bomb.position, this.position)) {
+                    return;
                 }
-
-                const unexplodedBombs = 0;
-                for (let i = 0; i < this.bombs.length; i++) {
-                    if (!this.bombs[i].exploded) {
-                        unexplodedBombs++;
-                    }
+            }
+            // Counting the current number of bombs that are planted by the user.
+            const unexplodedBombs = 0;
+            for (const bomb of this.bombs) {
+                if (!bomb.exploded) {
+                    unexplodedBombs++;
                 }
+            }
+            // If there are bombs left in its inventory
+            if (unexplodedBombs < this.bombsMax) {
+                // Plant the bomb.
+                const bomb = new Bomb(this.position, this.bombStrength);
+                this.bombs.push(bomb);
+                this.gameEngine.bombs.push(bomb);
 
-                if (unexplodedBombs < this.bombsMax) {
-                    const bomb = new Bomb(this.position, this.bombStrength);
-                    this.bombs.push(bomb);
-                    gameEngine.bombs.push(bomb);
-
-                    bomb.setExplodeListener(() => {
-                        Utils.removeFromArray(this.bombs, bomb);
-                    });
-                }
-            });
+                bomb.setExplodeListener(() => {
+                    Utils.removeFromArray(this.bombs, bomb);
+                });
+            }
         }
     }
 
@@ -111,16 +100,35 @@ class Player extends Entity {
         if (!this.alive) {
             return;
         }
-        if (gameEngine.menu.visible) {
+        if (this.gameEngine.paused) {
             return;
         }
         const position = { x: this.pixelPosition.x, y: this.pixelPosition.y };
 
         let dirX = 0;
         let dirY = 0;
-        if (gInputEngine.actions[this.controls.up]) {
-            position.y -= this.velocity;
-            dirY = -1;
+
+        for(const action of this.actionBuffer.possibleActions) {
+            if(this.actionBuffer.actions[action]) {
+                if(action === ActionBuffer.UP) {
+                    position.y -= this.velocity;
+                    dirY = -1;
+                } else if(action === ActionBuffer.DOWN) {
+                    position.y += this.velocity;
+                    dirY = 1;
+                } else if(action === ActionBuffer.LEFT) {
+                    position.x -= this.velocity;
+                    dirX = -1;
+                } else if(action === ActionBuffer.RIGHT) {
+                    position.x += this.velocity;
+                    dirX = 1;
+                } else if(action === ActionBuffer.BOMB) {
+                    this.plantBomb();
+                }
+            }
+        }
+/*         if (gInputEngine.actions[this.controls.up]) {
+
         } else if (gInputEngine.actions[this.controls.down]) {
             position.y += this.velocity;
             dirY = 1;
@@ -130,7 +138,7 @@ class Player extends Entity {
         } else if (gInputEngine.actions[this.controls.right]) {
             position.x += this.velocity;
             dirX = 1;
-        }
+        } */
 
         if (position.x != this.pixelPosition.x || position.y != this.pixelPosition.y) {
             if (!this.detectBombCollision(position)) {
@@ -176,34 +184,34 @@ class Player extends Entity {
 
         // possible fix position we are going to choose from
         const pos1 = { x: this.position.x + dirY, y: this.position.y + dirX };
-        const bmp1 = Utils.convertToBitmapPosition(pos1, gameEngine.tileSize);
+        const bmp1 = Utils.convertToBitmapPosition(pos1, this.gameEngine.tileSize);
 
         const pos2 = { x: this.position.x - dirY, y: this.position.y - dirX };
-        const bmp2 = Utils.convertToBitmapPosition(pos2, gameEngine.tileSize);
+        const bmp2 = Utils.convertToBitmapPosition(pos2, this.gameEngine.tileSize);
 
         // in front of current position
-        if (gameEngine.getTileMaterial({ x: this.position.x + dirX, y: this.position.y + dirY }) == 'grass') {
+        if (this.gameEngine.getTileMaterial({ x: this.position.x + dirX, y: this.position.y + dirY }) == 'grass') {
             position = this.position;
         }
         // right bottom
         // left top
-        else if (gameEngine.getTileMaterial(pos1) == 'grass'
+        else if (this.gameEngine.getTileMaterial(pos1) == 'grass'
             && Math.abs(this.pixelPosition.y - bmp1.y) < edgeSize && Math.abs(this.pixelPosition.x - bmp1.x) < edgeSize) {
-            if (gameEngine.getTileMaterial({ x: pos1.x + dirX, y: pos1.y + dirY }) == 'grass') {
+            if (this.gameEngine.getTileMaterial({ x: pos1.x + dirX, y: pos1.y + dirY }) == 'grass') {
                 position = pos1;
             }
         }
         // right top
         // left bottom
-        else if (gameEngine.getTileMaterial(pos2) == 'grass'
+        else if (this.gameEngine.getTileMaterial(pos2) == 'grass'
             && Math.abs(this.pixelPosition.y - bmp2.y) < edgeSize && Math.abs(this.pixelPosition.x - bmp2.x) < edgeSize) {
-            if (gameEngine.getTileMaterial({ x: pos2.x + dirX, y: pos2.y + dirY }) == 'grass') {
+            if (this.gameEngine.getTileMaterial({ x: pos2.x + dirX, y: pos2.y + dirY }) == 'grass') {
                 position = pos2;
             }
         }
 
-        if (position.x &&  gameEngine.getTileMaterial(position) == 'grass') {
-            return Utils.convertToBitmapPosition(position, gameEngine.tileSize);
+        if (position.x &&  this.gameEngine.getTileMaterial(position) == 'grass') {
+            return Utils.convertToBitmapPosition(position, this.gameEngine.tileSize);
         }
     }
 
@@ -211,7 +219,7 @@ class Player extends Entity {
      * Calculates and updates entity position according to its actual bitmap position
      */
     updatePosition() {
-        this.position = Utils.convertToEntityPosition(this.pixelPosition, gameEngine.tileSize);
+        this.position = Utils.convertToEntityPosition(this.pixelPosition, this.gameEngine.tileSize);
     }
 
     /**
@@ -225,17 +233,17 @@ class Player extends Entity {
         player.bottom = player.top + this.size.h;
 
         // Check possible collision with all wall and wood tiles
-        const tiles = gameEngine.tiles;
+        const tiles = this.gameEngine.tiles;
         for (let i = 0; i < tiles.length; i++) {
             const tilePosition = tiles[i].position;
 
             const tile = {};
-            tile.left = tilePosition.x * gameEngine.tileSize + 25;
-            tile.top = tilePosition.y * gameEngine.tileSize + 20;
-            tile.right = tile.left + gameEngine.tileSize - 30;
-            tile.bottom = tile.top + gameEngine.tileSize - 30;
+            tile.left = tilePosition.x * this.gameEngine.tileSize + 25;
+            tile.top = tilePosition.y * this.gameEngine.tileSize + 20;
+            tile.right = tile.left + this.gameEngine.tileSize - 30;
+            tile.bottom = tile.top + this.gameEngine.tileSize - 30;
 
-            if(gameEngine.intersectRect(player, tile)) {
+            if(this.gameEngine.intersectRect(player, tile)) {
                 return true;
             }
         }
@@ -246,10 +254,10 @@ class Player extends Entity {
      * Returns true when the bomb collision is detected and we should not move to target position.
      */
     detectBombCollision(pixels) {
-        const position = Utils.convertToEntityPosition(pixels, gameEngine.tileSize);
+        const position = Utils.convertToEntityPosition(pixels, this.gameEngine.tileSize);
 
-        for (let i = 0; i < gameEngine.bombs.length; i++) {
-            const bomb = gameEngine.bombs[i];
+        for (let i = 0; i < this.gameEngine.bombs.length; i++) {
+            const bomb = this.gameEngine.bombs[i];
             // Compare bomb position
             if (bomb.position.x == position.x && bomb.position.y == position.y) {
                 // Allow to escape from bomb that appeared on my field
@@ -270,9 +278,8 @@ class Player extends Entity {
     }
 
     detectFireCollision() {
-        const bombs = gameEngine.bombs;
-        for (let i = 0; i < bombs.length; i++) {
-            const bomb = bombs[i];
+        for (let i = 0; i < this.gameEngine.bombs.length; i++) {
+            const bomb = this.gameEngine.bombs[i];
             for (let j = 0; j < bomb.fires.length; j++) {
                 const fire = bomb.fires[j];
                 const collision = bomb.exploded && fire.position.x == this.position.x && fire.position.y == this.position.y;
@@ -288,8 +295,8 @@ class Player extends Entity {
      * Checks whether we have got bonus and applies it.
      */
     handleBonusCollision() {
-        for (let i = 0; i < gameEngine.bonuses.length; i++) {
-            const bonus = gameEngine.bonuses[i];
+        for (let i = 0; i < this.gameEngine.bonuses.length; i++) {
+            const bonus = this.gameEngine.bonuses[i];
             if (Utils.comparePositions(bonus.position, this.position)) {
                 this.applyBonus(bonus);
                 bonus.destroy();
@@ -313,11 +320,27 @@ class Player extends Entity {
     die() {
         this.alive = false;
 
-        if (gameEngine.countPlayersAlive() == 1 && gameEngine.playersCount == 2) {
-            gameEngine.gameOver('win');
-        } else if (gameEngine.countPlayersAlive() == 0) {
-            gameEngine.gameOver('lose');
+        if (this.gameEngine.countPlayersAlive() == 1 && this.gameEngine.playersCount == 2) {
+            this.gameEngine.gameOver('win');
+        } else if (this.gameEngine.countPlayersAlive() == 0) {
+            this.gameEngine.gameOver('lose');
         }
+    }
+
+    getSerializedState() {
+        return {
+            id: this.id,
+            velocity: this.velocity,
+            bombsMax: this.bombsMax,
+            bombStrength: this.bombStrength,
+            position: this.position,
+            pixelPosition: this.pixelPosition,
+            size: this.size,
+            alive: this.alive,
+            bombs: this.bombs,
+            actionBuffer: this.actionBuffer,
+            escapeBomb: this.escapeBomb
+        };
     }
 }
 

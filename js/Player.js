@@ -47,6 +47,12 @@ Player = Entity.extend({
     },
 
     /**
+     * This is used to only send changes in action state to the server.
+     * This prevent spamming the serving with the same state again and again.
+     */
+    previousActionsState: null,
+
+    /**
      * Bomb that player can escape from even when there is a collision
      */
     escapeBomb: null,
@@ -162,6 +168,8 @@ Player = Entity.extend({
             this.animate('idle');
         }
 
+        this.sendActionsToServer();
+
         if (position.x != this.bmp.x || position.y != this.bmp.y) {
             if (!this.detectBombCollision(position)) {
                 if (this.detectWallCollision(position)) {
@@ -192,6 +200,24 @@ Player = Entity.extend({
         }
 
         this.handleBonusCollision();
+    },
+
+    sendActionsToServer: function() {
+/*         if (gInputEngine.actions[this.controls.up]) {
+            gGameEngine.socketManager.moveUp();
+        } else if (gInputEngine.actions[this.controls.down]) {
+            gGameEngine.socketManager.moveDown();
+        } else if (gInputEngine.actions[this.controls.left]) {
+            gGameEngine.socketManager.moveLeft();
+        } else if (gInputEngine.actions[this.controls.right]) {
+            gGameEngine.socketManager.moveRight();
+        } else if (gInputEngine.actions[this.controls.bomb]) {
+            gGameEngine.socketManager.plantBomb();
+        } */
+
+        gGameEngine.socketManager.sendPlayerState(gInputEngine.actions);
+
+        this.previousActionsState = gInputEngine.actions;
     },
 
     /**

@@ -1,47 +1,50 @@
+const Entity = require('./Entity');
+const gameEngine = require('./GameEngine');
+const Utils = require('./Utils');
+
 class Bomb extends Entity {
-    /**
-     * Entity position on map grid
-     */
-    position = {};
 
-    /**
-     * How far the fire reaches when bomb explodes
-     */
-    strength = 1;
+    constructor() {
+        /**
+         * Entity position on map grid
+         */
+        this.position = {};
 
-    /**
-     * Bitmap dimensions
-     */
-    size = {
-        w: 28,
-        h: 28
-    };
+        /**
+         * How far the fire reaches when bomb explodes
+         */
+        this.strength = 1;
 
-    /**
-     * Bitmap animation
-     */
-    bmp = null;
+        /**
+         * Bitmap dimensions
+         */
+        this.size = {
+            w: 28,
+            h: 28
+        };
 
-    /**
-     * Timer in frames
-     */
-    timer = 0;
+        /**
+         * Bitmap animation
+         */
+/*         this.bmp = null; */
 
-    /**
-     * Max timer value in seconds
-     */
-    timerMax = 2;
 
-    exploded = false;
+        /**
+         * Max timer value in seconds
+         */
+        this.timerMax = 2;
 
-    fires = [];
+        this.exploded = false;
 
-    explodeListener = null;
+        this.fires = [];
+
+        this.explodeListener = null;
+    }
 
     init(position, strength) {
         this.strength = strength;
 
-        var spriteSheet = new createjs.SpriteSheet({
+/*         var spriteSheet = new createjs.SpriteSheet({
             images: [gGameEngine.bombImg],
             frames: {
                 width: this.size.w,
@@ -54,57 +57,46 @@ class Bomb extends Entity {
             }
         });
         this.bmp = new createjs.Sprite(spriteSheet);
-        this.bmp.gotoAndPlay('idle');
+        this.bmp.gotoAndPlay('idle'); */
 
         this.position = position;
 
-        var pixels = Utils.convertToBitmapPosition(position);
+/*         var pixels = Utils.convertToBitmapPosition(position);
         this.bmp.x = pixels.x + this.size.w / 4;
-        this.bmp.y = pixels.y + this.size.h / 4;
+        this.bmp.y = pixels.y + this.size.h / 4; */
 
         this.fires = [];
 
         // Allow players and bots that are already on this position to escape
-        var players = gGameEngine.getPlayersAndBots();
-        for (var i = 0; i < players.length; i++) {
-            var player = players[i];
+        const players = gameEngine.getPlayersAndBots();
+        for (const player of players) {
             if (Utils.comparePositions(player.position, this.position)) {
                 player.escapeBomb = this;
             }
         }
+
+        setTimeout(() => this.explode, this.timerMax * 1000);
     }
 
     update() {
         if (this.exploded) { return; }
-
-        this.timer++;
-        if (this.timer > this.timerMax * createjs.Ticker.getMeasuredFPS()) {
-            this.explode();
-        }
     }
 
     explode() {
         this.exploded = true;
 
-        if (!gGameEngine.mute && gGameEngine.soundtrackPlaying) {
-            var bombSound = createjs.Sound.play("bomb");
-            bombSound.setVolume(0.2);
-        }
-
         // Fire in all directions!
-        var positions = this.getDangerPositions();
-        for (var i = 0; i < positions.length; i++) {
-            var position = positions[i];
+        const positions = this.getDangerPositions();
+        for (const position of positions) {
             this.fire(position);
 
-            var material = gGameEngine.getTileMaterial(position);
+            const material = gameEngine.getTileMaterial(position);
             if (material == 'wood') {
-                var tile = gGameEngine.getTile(position);
+                const tile = gameEngine.getTile(position);
                 tile.remove();
             } else if (material == 'grass') {
                 // Explode bombs in fire
-                for (var j = 0; j < gGameEngine.bombs.length; j++) {
-                    var bomb = gGameEngine.bombs[j];
+                for (const bomb of gameEngine.bombs) {
                     if (!bomb.exploded
                         && Utils.comparePositions(bomb.position, position)) {
                         bomb.explode();
@@ -120,25 +112,25 @@ class Bomb extends Entity {
      * Returns positions that are going to be covered by fire.
      */
     getDangerPositions() {
-        var positions = [];
+        const positions = [];
         positions.push(this.position);
 
-        for (var i = 0; i < 4; i++) {
-            var dirX;
-            var dirY;
+        let dirX;
+        let dirY;
+        for (const i = 0; i < 4; i++) {
             if (i == 0) { dirX = 1; dirY = 0; }
             else if (i == 1) { dirX = -1; dirY = 0; }
             else if (i == 2) { dirX = 0; dirY = 1; }
             else if (i == 3) { dirX = 0; dirY = -1; }
 
-            for (var j = 1; j <= this.strength; j++) {
-                var explode = true;
-                var last = false;
+            for (let j = 1; j <= this.strength; j++) {
+                let explode = true;
+                let last = false;
 
-                var position = { x: this.position.x + j * dirX, y: this.position.y + j * dirY };
+                const position = { x: this.position.x + j * dirX, y: this.position.y + j * dirY };
 
 
-                var material = gGameEngine.getTileMaterial(position);
+                const material = gameEngine.getTileMaterial(position);
                 if (material == 'wall') { // One can not simply burn the wall
                     explode = false;
                     last = true;
@@ -161,12 +153,12 @@ class Bomb extends Entity {
     }
 
     fire(position) {
-        var fire = new Fire(position, this);
+        const fire = new Fire(position, this);
         this.fires.push(fire);
     }
 
     remove() {
-        gGameEngine.stage.removeChild(this.bmp);
+        // gGameEngine.stage.removeChild(this.bmp);
     }
 
     setExplodeListener(listener) {

@@ -13,6 +13,8 @@ InputEngine = Class.extend({
 
     listeners: [],
 
+    previousActions: {},
+
     init: function() {
     },
 
@@ -42,7 +44,12 @@ InputEngine = Class.extend({
     onKeyDown: function(event) {
         var action = gInputEngine.bindings[event.keyCode];
         if (action) {
-            gInputEngine.actions[action] = true;
+
+            if(!gInputEngine.actions[action]) {
+                gInputEngine.previousActions = gInputEngine.actions;
+                gInputEngine.actions[action] = true;
+            }
+
             event.preventDefault();
         }
         return false;
@@ -51,6 +58,7 @@ InputEngine = Class.extend({
     onKeyUp: function(event) {
         var action = gInputEngine.bindings[event.keyCode];
         if (action) {
+            gInputEngine.previousActions = gInputEngine.actions;
             gInputEngine.actions[action] = false;
 
             var listeners = gInputEngine.listeners[action];
@@ -80,6 +88,10 @@ InputEngine = Class.extend({
 
     removeAllListeners: function() {
         this.listeners = [];
+    },
+
+    actionsHasChanged: function() {
+
     }
 });
 

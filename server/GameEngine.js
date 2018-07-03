@@ -12,7 +12,6 @@ class GameEngine {
         this.playersCount = 2; /* 1 - 2 */
         this.bonusesPercent = 16;
 
-        this.menu = null;
         this.players = [];
         this.bots = [];
         this.tiles = [];
@@ -28,6 +27,8 @@ class GameEngine {
         this.soundtrack = null;
         // Socket communication
         this.socket = null;
+
+        this.gameLoop = null;
     }
 
     init() {
@@ -46,18 +47,19 @@ class GameEngine {
         this.renderTiles();
         this.renderBonuses();
 
-        this.spawnBots();
+/*         this.spawnBots();*/
         this.spawnPlayers();
 
         // Start loop
-        if (!createjs.Ticker.hasEventListener("tick")) {
-            createjs.Ticker.addEventListener("tick", gGameEngine.update);
+        this.gameLoop = setInterval(() => this.update(), 1000 / this.fps);
+/*         if (!createjs.Ticker.hasEventListener("tick")) {
+            createjs.Ticker.addEventListener("tick", this.update);
             createjs.Ticker.setFPS(this.fps);
-        }
+        } */
     }
 
     addPlayer(playerId) {
-        this.players.push({id: playerId});
+        this.players.push(new Player(playerId, this));
     }
 
     update() {
@@ -67,20 +69,20 @@ class GameEngine {
         }
 
         // Player
-        for (let i = 0; i < gGameEngine.players.length; i++) {
-            const player = gGameEngine.players[i];
+        for (let i = 0; i < this.players.length; i++) {
+            const player = this.players[i];
             player.update();
         }
 
         // Bots
-        for (let i = 0; i < gGameEngine.bots.length; i++) {
-            const bot = gGameEngine.bots[i];
+        for (let i = 0; i < this.bots.length; i++) {
+            const bot = this.bots[i];
             bot.update();
         }
 
         // Bombs
-        for (let i = 0; i < gGameEngine.bombs.length; i++) {
-            const bomb = gGameEngine.bombs[i];
+        for (let i = 0; i < this.bombs.length; i++) {
+            const bomb = this.bombs[i];
             bomb.update();
         }
     }
@@ -190,28 +192,17 @@ class GameEngine {
                 var bot = new Bot({ x: 1, y: 1 });
                 this.bots.push(bot);
             }
-        },
+        },*/
 
-        spawnPlayers: function() {
-            this.players = [];
-
-            if (this.playersCount >= 1) {
-                var player = new Player({ x: 1, y: 1 });
-                this.players.push(player);
+        spawnPlayers() {
+            if (this.players.length >= 1) {
+                this.players[0].init({ x: 1, y: 1 });
             }
 
-            if (this.playersCount >= 2) {
-                var controls = {
-                    'up': 'up2',
-                    'left': 'left2',
-                    'down': 'down2',
-                    'right': 'right2',
-                    'bomb': 'bomb2'
-                };
-                var player2 = new Player({ x: this.tilesX - 2, y: this.tilesY - 2 }, controls, 1);
-                this.players.push(player2);
+            if (this.players.length >= 2) {
+                this.players[1].init({ x: this.tilesX - 2, y: this.tilesY - 2 });
             }
-        }, */
+        }
 
     /**
      * Checks whether two rectangles intersect.
@@ -249,14 +240,14 @@ class GameEngine {
     }
 
 /*     gameOver(status) {
-        if (gGameEngine.menu.visible) {
+        if (this.menu.visible) {
             return;
         }
 
         if (status == "win") {
             var winText = "You won!";
-            if (gGameEngine.playersCount > 1) {
-                var winner = gGameEngine.getWinner();
+            if (this.playersCount > 1) {
+                var winner = this.getWinner();
                 winText = winner == 0 ? "Player 1 won!" : "Player 2 won!";
             }
             this.menu.show([
@@ -311,8 +302,11 @@ class GameEngine {
     }
 
     getSerializedState() {
+        let players = this.getPlayersAndBots();
+        players = players.map(player => player.getSerializedState());
+
         return {
-            players: this.getPlayersAndBots(),
+            players,
             bonuses: this.bonuses,
             tiles: this.tiles,
             tilesX: this.tilesX,
@@ -330,8 +324,21 @@ class GameEngine {
 
     restart() {
         // gInputEngine.removeAllListeners();
-        /* gGameEngine.stage.removeAllChildren(); */
+        /* this.stage.removeAllChildren(); */
+        console.log("Restart game");
+        this.stopGameLoop();
         this.setup();
+    }
+
+    stopGameLoop() {
+        if(this.gameLoop) {
+            clearInterval(this.gameLoop);
+            this.gameLoop = null;
+        }
+    }
+
+    getPlayer(id) {
+        return this.players.find(player => player.id === id);
     }
 }
 

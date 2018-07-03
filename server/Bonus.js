@@ -1,11 +1,14 @@
 const gameEngine = require('./GameEngine');
 
 class Bonus extends Entity{
-    types = ['speed', 'bomb', 'fire'];
 
-    type = '';
-    position = {};
-    pixelsPosition = null;
+    constructor() {
+        this.types = ['speed', 'bomb', 'fire'];
+
+        this.type = '';
+        this.position = {};
+        this.pixelsPosition = null;
+    }
 
     init(position, typePosition) {
         this.type = this.types[typePosition];

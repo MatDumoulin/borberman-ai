@@ -1,76 +1,81 @@
-Fire = Entity.extend({
-    /**
-     * Entity position on map grid
-     */
-    position: {},
+const Entity = require('./Entity');
+const gameEngine = require('./GameEngine');
 
-    /**
-     * Dimensions in map.
-     */
-    size: {
-        w: 38,
-        h: 38
-    },
+class Fire extends Entity {
 
-    /**
-     * Bitmap animation
-     */
-    bmp: null,
+    constructor() {
+        /**
+         * Entity position on map grid
+         */
+        this.position = {};
 
-    /**
-     * The bomb that triggered this fire
-     */
-    bomb: null,
+        /**
+         * Dimensions in map.
+         */
+        this.size = {
+            w: 38,
+            h: 38
+        };
 
-    init: function(position, bomb) {
+        /**
+         * Bitmap animation
+         */
+        this.bmp = null;
+
+        /**
+         * The bomb that triggered this fire
+         */
+        this.bomb = null;
+    }
+
+
+    init(position, bomb) {
         this.bomb = bomb;
 
-        var spriteSheet = new createjs.SpriteSheet({
+/*         var spriteSheet = new createjs.SpriteSheet({
             images: [gGameEngine.fireImg],
             frames: { width: this.size.w, height: this.size.h, regX: 0, regY: 0 },
             animations: {
                 idle: [0, 5, null, 0.4],
             }
-        });
-        this.bmp = new createjs.Sprite(spriteSheet);
-        this.bmp.gotoAndPlay('idle');
-        var that = this;
-        this.bmp.addEventListener('animationend', function() {
-            that.remove();
-        });
+        }); */
+        setTimeout(() => this.remove(), 400);
 
         this.position = position;
-
+/*
         var pixels = Utils.convertToBitmapPosition(position);
         this.bmp.x = pixels.x + 2;
         this.bmp.y = pixels.y - 5;
 
-        gGameEngine.stage.addChild(this.bmp);
-    },
+        gGameEngine.stage.addChild(this.bmp); */
+    }
 
-    update: function() {
-    },
+    update() {
+    }
 
-    remove: function() {
+    remove() {
         if (this.bomb.explodeListener) {
             this.bomb.explodeListener();
             this.bomb.explodeListener = null;
         }
 
-        gGameEngine.stage.removeChild(this.bmp);
+/*         gGameEngine.stage.removeChild(this.bmp); */
 
-        for (var i = 0; i < this.bomb.fires.length; i++) {
-            var fire = this.bomb.fires[i];
+        // Removes this fire line from the game since the explosion is over.
+        for (let i = 0; i < this.bomb.fires.length; i++) {
+            const fire = this.bomb.fires[i];
             if (this == fire) {
                 this.bomb.fires.splice(i, 1);
             }
         }
-
-        for (var i = 0; i < gGameEngine.bombs.length; i++) {
-            var bomb = gGameEngine.bombs[i];
+        // Removes this bomb from the game since it has exploded.
+        for (let i = 0; i < gameEngine.bombs.length; i++) {
+            const bomb = gameEngine.bombs[i];
             if (this.bomb == bomb) {
-                gGameEngine.bombs.splice(i, 1);
+                gameEngine.bombs.splice(i, 1);
             }
         }
     }
-});
+}
+
+module.exports = Fire;

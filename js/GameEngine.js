@@ -31,7 +31,7 @@ GameEngine = Class.extend({
     soundtrackPlaying: false,
     soundtrack: null,
     // Socket communication
-    socket: null,
+    socketManager: null,
 
     init: function() {
         this.size = {
@@ -80,13 +80,7 @@ GameEngine = Class.extend({
 
         // Creates menu
         this.menu = new Menu();
-
-        this.socket = io('http://localhost:3000');
-        // Wait for the communication with the server before showing the menu.
-        console.log("Waiting for web socket...");
-        this.socket.on('connect', function(){
-            console.log("Socket is connected.");
-        });
+        this.socketManager = new SocketManager(this);
     },
 
     setup: function() {
@@ -131,8 +125,7 @@ GameEngine = Class.extend({
         // Pause listener
         gInputEngine.addListener('pause', () => {
             if (!gGameEngine.menu.visible) {
-                this.paused = !this.paused;
-                this.socket.emit("pause");
+                this.socketManager.togglePause();
             }
         });
 
@@ -370,7 +363,7 @@ GameEngine = Class.extend({
     },
 
     restart: function() {
-        this.socket.emit("restart");
+        this.socketManager.restartGame();
         gInputEngine.removeAllListeners();
         gGameEngine.stage.removeAllChildren();
         gGameEngine.setup();
@@ -418,15 +411,8 @@ GameEngine = Class.extend({
         return players;
     },
 
-    getSerializedState: function() {
-        return {
-            players: this.getPlayersAndBots(),
-            bonuses: this.bonuses,
-            tiles: this.tiles,
-            tilesX: this.tilesX,
-            tilesY: this.tilesY,
-            paused: this.paused
-        };
+    setPausedStatus: function(isPaused) {
+        this.paused = isPaused;
     }
 });
 
